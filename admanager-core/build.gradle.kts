@@ -50,7 +50,7 @@ afterEvaluate {
 
                 groupId = "com.github.appbards"
                 artifactId = "admanager-core"
-                version = "1.0.4"
+                version = "1.0.0"
             }
         }
     }
