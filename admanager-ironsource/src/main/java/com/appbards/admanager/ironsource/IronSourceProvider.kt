@@ -81,25 +81,27 @@ class IronSourceProvider(
 
     override fun isInitialized(): Boolean = initialized
 
-    override fun getRewardedAd(placementId: String): IRewardedAd? = null
-
-    override fun getInterstitialAd(placementId: String): IInterstitialAd? {
-        TODO("Not yet implemented")
+    override fun getRewardedAd(placementId: String): IRewardedAd {
+        return IronSourceRewardedAd(activity, placementId)
     }
 
-    override fun getBannerAd(placementId: String): IBannerAd? {
-        TODO("Not yet implemented")
+    override fun getInterstitialAd(placementId: String): IInterstitialAd {
+        return IronSourceInterstitialAd(activity, placementId)
+    }
+
+    override fun getBannerAd(placementId: String): IBannerAd {
+        return IronSourceBannerAd(activity, placementId)
     }
 
     override fun getNativeAd(placementId: String): INativeAd? {
-        TODO("Not yet implemented")
+        throw UnsupportedOperationException("LevelPlay does not support native ads in this implementation")
     }
 
     override fun getAppOpenAd(placementId: String): IAppOpenAd? {
-        TODO("Not yet implemented")
+        throw UnsupportedOperationException("LevelPlay does not support app open ads")
     }
 
     override fun destroy() {
-        TODO("Not yet implemented")
+        initialized = false
     }
 }
