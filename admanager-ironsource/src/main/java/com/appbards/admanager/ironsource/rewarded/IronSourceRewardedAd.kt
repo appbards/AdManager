@@ -1,4 +1,4 @@
-package com.appbards.ai.landmark.admanager.ironsource.rewarded
+package com.appbards.admanager.ironsource.rewarded
 
 import android.app.Activity
 import com.appbards.admanager.core.callback.RewardedAdCallback

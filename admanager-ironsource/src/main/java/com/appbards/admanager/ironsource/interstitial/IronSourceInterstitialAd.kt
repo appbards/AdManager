@@ -1,4 +1,4 @@
-package com.appbards.ai.landmark.admanager.ironsource.interstitial
+package com.appbards.admanager.ironsource.interstitial
 
 import android.app.Activity
 import com.appbards.admanager.core.callback.InterstitialAdCallback

@@ -1,4 +1,4 @@
-package com.appbards.ai.landmark.admanager.ironsource
+package com.appbards.admanager.ironsource
 
 import android.app.Activity
 import com.appbards.admanager.core.config.AdConfig

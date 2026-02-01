@@ -1,4 +1,4 @@
-package com.appbards.ai.landmark.admanager.ironsource.banner
+package com.appbards.admanager.ironsource.banner
 
 import android.app.Activity
 import android.view.View
