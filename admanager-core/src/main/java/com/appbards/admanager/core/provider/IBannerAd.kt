@@ -1,6 +1,7 @@
 package com.appbards.admanager.core.provider
 
 import android.view.View
+import android.view.ViewGroup
 import com.appbards.admanager.core.callback.BannerAdCallback
 import com.appbards.admanager.core.model.AdResult
 
@@ -19,8 +20,7 @@ enum class BannerPosition {
 }
 
 interface IBannerAd {
-    fun load(size: BannerSize): AdResult
-    fun getView(): View?  // Returns the banner view to add to your layout
+    fun load(container: ViewGroup, size: BannerSize, callback: BannerAdCallback)
     fun pause()
     fun resume()
     fun destroy()

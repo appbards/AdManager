@@ -1,9 +1,9 @@
 package com.appbards.admanager.ironsource.banner
 
 import android.app.Activity
-import android.view.View
+import android.view.ViewGroup
+import com.appbards.admanager.core.callback.BannerAdCallback
 import com.appbards.admanager.core.model.AdError
-import com.appbards.admanager.core.model.AdResult
 import com.appbards.admanager.core.model.ErrorCode
 import com.appbards.admanager.core.provider.BannerSize
 import com.appbards.admanager.core.provider.IBannerAd
@@ -21,15 +21,21 @@ class IronSourceBannerAd(
     private var bannerAdView: LevelPlayBannerAdView? = null
     private var isLoaded = false
 
-    override fun load(size: BannerSize): AdResult {
+    override fun load(container: ViewGroup, size: BannerSize, callback: BannerAdCallback) {
         try {
             // Destroy old banner if exists
             bannerAdView?.destroy()
             bannerAdView = null
-            isLoaded = false
 
-            // Convert our BannerSize to LevelPlay size
-            val levelPlaySize = getLevelPlayBannerSize(size)
+            // Convert BannerSize to LevelPlay size
+            val levelPlaySize = when (size) {
+                BannerSize.BANNER -> LevelPlayAdSize.BANNER
+                BannerSize.LARGE_BANNER -> LevelPlayAdSize.LARGE
+                BannerSize.MEDIUM_RECTANGLE -> LevelPlayAdSize.MEDIUM_RECTANGLE
+                BannerSize.LEADERBOARD -> LevelPlayAdSize.BANNER
+                BannerSize.ADAPTIVE -> LevelPlayAdSize.createAdaptiveAdSize(activity) ?: LevelPlayAdSize.BANNER
+                BannerSize.FULL_BANNER -> LevelPlayAdSize.BANNER
+            }
 
             // Build banner config
             val adConfig = LevelPlayBannerAdView.Config.Builder()
@@ -41,60 +47,68 @@ class IronSourceBannerAd(
 
             // Set listener
             bannerAdView?.bannerListener = object : LevelPlayBannerAdViewListener {
-                override fun onAdLoaded(p0: LevelPlayAdInfo) {
-                    isLoaded = true
+                override fun onAdLoaded(adInfo: LevelPlayAdInfo) {
+                    // Add banner to container when loaded
+                    bannerAdView?.let { view ->
+                        container.removeAllViews()
+                        container.addView(view)
+                    }
+                    callback.onAdLoaded()
                 }
 
-                override fun onAdLoadFailed(p0: LevelPlayAdError) {
-                    isLoaded = false
-                    bannerAdView = null
+                override fun onAdLoadFailed(error: LevelPlayAdError) {
+                    callback.onAdFailedToLoad(
+                        AdError(
+                            ErrorCode.NO_FILL,
+                            "Banner failed to load: ${error.errorMessage}",
+                            error
+                        )
+                    )
                 }
 
-                override fun onAdDisplayed(p0: LevelPlayAdInfo) {
-                    super.onAdDisplayed(p0)
+                override fun onAdDisplayed(adInfo: LevelPlayAdInfo) {
+                    callback.onAdShown()
                 }
 
-                override fun onAdDisplayFailed(
-                    p0: LevelPlayAdInfo,
-                    p1: LevelPlayAdError
-                ) {
-                    super.onAdDisplayFailed(p0, p1)
+                override fun onAdDisplayFailed(adInfo: LevelPlayAdInfo, error: LevelPlayAdError) {
+                    callback.onAdFailedToShow(
+                        AdError(
+                            ErrorCode.SHOW_FAILED,
+                            "Banner failed to display: ${error.errorMessage}",
+                            error
+                        )
+                    )
                 }
 
-                override fun onAdClicked(p0: LevelPlayAdInfo) {
-                    super.onAdClicked(p0)
+                override fun onAdClicked(adInfo: LevelPlayAdInfo) {
+                    callback.onAdClicked()
                 }
 
-                override fun onAdExpanded(p0: LevelPlayAdInfo) {
-                    super.onAdExpanded(p0)
+                override fun onAdExpanded(adInfo: LevelPlayAdInfo) {
+                    callback.onBannerExpanded()
                 }
 
-                override fun onAdCollapsed(p0: LevelPlayAdInfo) {
-                    super.onAdCollapsed(p0)
+                override fun onAdCollapsed(adInfo: LevelPlayAdInfo) {
+                    callback.onBannerCollapsed()
                 }
 
-                override fun onAdLeftApplication(p0: LevelPlayAdInfo) {
-                    super.onAdLeftApplication(p0)
+                override fun onAdLeftApplication(adInfo: LevelPlayAdInfo) {
+                    // User left app
                 }
             }
 
             // Load the banner
             bannerAdView?.loadAd()
 
-            return AdResult.Success("Banner ad loading")
         } catch (e: Exception) {
-            return AdResult.Failure(
+            callback.onAdFailedToLoad(
                 AdError(
                     ErrorCode.PROVIDER_ERROR,
-                    "Failed to load banner: \${e.message}",
+                    "Failed to load banner: ${e.message}",
                     e
                 )
             )
         }
-    }
-
-    override fun getView(): View? {
-        return if (isLoaded) bannerAdView else null
     }
 
     override fun pause() {

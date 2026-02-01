@@ -347,24 +347,28 @@ object AdManager {
 
         AdLogger.d("Loading banner ad for placement: $placementId")
 
-        bannerAd?.destroy() // Destroy old banner if exists
+        bannerAd?.destroy()
         bannerAd = provider?.getBannerAd(placementId)
 
-        val result = bannerAd?.load(size)
-
-        if (result is AdResult.Success) {
-            // Get banner view and add to container
-            bannerAd?.getView()?.let { bannerView ->
-                container.removeAllViews()
-                container.addView(bannerView)
+        bannerAd?.load(container, size, object : com.appbards.admanager.core.callback.BannerAdCallback {
+            override fun onAdLoaded() {
                 AdLogger.d("Banner ad loaded and added to container")
-            } ?: run {
-                AdLogger.e("Banner view is null")
             }
-        } else if (result is AdResult.Failure) {
-            AdLogger.e("Banner failed to load: ${result.error.message}")
-        }
+
+            override fun onAdFailedToLoad(error: AdError) {
+                AdLogger.e("Banner failed to load: ${error.message}")
+            }
+
+            override fun onAdShown() {
+                AdLogger.d("Banner ad displayed")
+            }
+
+            override fun onAdFailedToShow(error: AdError) {
+                AdLogger.e("Banner failed to display: ${error.message}")
+            }
+        })
     }
+
 
     /**
      * Remove banner from view
