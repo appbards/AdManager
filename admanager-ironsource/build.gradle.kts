@@ -57,6 +57,12 @@ dependencies {
     // Add Unity Ads Network
     implementation("com.unity3d.ads-mediation:unityads-adapter:5.3.0")
     implementation("com.unity3d.ads:unity-ads:4.16.4")
+    // Add Chartboost Network
+    implementation("com.unity3d.ads-mediation:chartboost-adapter:5.2.0")
+    implementation("com.chartboost:chartboost-sdk:9.10.2")
+    // Add Mintegral Network
+    implementation("com.unity3d.ads-mediation:mintegral-adapter:5.3.0")
+    implementation("com.mbridge.msdk.oversea:mbridge_android_sdk:17.0.31")
 }
 
 // Publishing configuration
