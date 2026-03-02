@@ -41,6 +41,9 @@ dependencies {
     // IronSource provider
 //    implementation("com.github.AppBards.AdManager:admanager-ironsource:1.0.0")
 
+    implementation(project(":admanager-core"))
+    implementation(project(":admanager-ironsource"))
+
     // Coroutines (if not already present)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 

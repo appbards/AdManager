@@ -47,10 +47,10 @@ dependencies {
     /*
      * Ironsource Mediation 9.2.0
      */
-    implementation("com.unity3d.ads-mediation:mediation-sdk:9.2.0")
-    implementation("com.google.android.gms:play-services-appset:16.0.0")
-    implementation("com.google.android.gms:play-services-ads-identifier:18.1.0")
-    implementation("com.google.android.gms:play-services-basement:18.1.0")
+    implementation("com.unity3d.ads-mediation:mediation-sdk:9.3.0")
+    implementation("com.google.android.gms:play-services-appset:16.1.0")
+    implementation("com.google.android.gms:play-services-ads-identifier:18.3.0")
+    implementation("com.google.android.gms:play-services-basement:18.10.0")
     // Add Meta Audience Network
     implementation("com.unity3d.ads-mediation:facebook-adapter:5.1.0")
     implementation("com.facebook.android:audience-network-sdk:6.21.0")
@@ -58,10 +58,10 @@ dependencies {
     implementation("com.unity3d.ads-mediation:unityads-adapter:5.3.0")
     implementation("com.unity3d.ads:unity-ads:4.16.4")
     // Add Chartboost Network
-    implementation("com.unity3d.ads-mediation:chartboost-adapter:5.2.0")
-    implementation("com.chartboost:chartboost-sdk:9.10.2")
+    implementation("com.unity3d.ads-mediation:chartboost-adapter:5.4.0")
+    implementation("com.chartboost:chartboost-sdk:9.11.0")
     // Add Mintegral Network
-    implementation("com.unity3d.ads-mediation:mintegral-adapter:5.3.0")
+    implementation("com.unity3d.ads-mediation:mintegral-adapter:5.9.0")
     implementation("com.mbridge.msdk.oversea:mbridge_android_sdk:17.0.31")
 }
 
