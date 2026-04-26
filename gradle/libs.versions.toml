@@ -11,6 +11,28 @@ material = "1.13.0"
 activity = "1.12.2"
 constraintlayout = "2.2.1"
 
+# IronSource mediation
+mbridge_android_sdk = "17.1.51"
+playServicesAdsIdentifier = "18.3.0"
+playServicesAppset = "16.1.0"
+playServicesBasement = "18.10.0"
+
+# IS mediation Facebook
+audienceNetworkSdk = "6.21.0"
+facebookAdapter = "5.2.0"
+
+# IS Unity
+unityAds = "4.17.0"
+unityadsAdapter = "5.6.0"
+
+# IS Chartboost
+chartboostAdapter = "5.4.0"
+chartboostSdk = "9.11.1"
+
+# IS Mintegral
+mediationSdk = "9.4.0"
+mintegralAdapter = "5.12.0"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -21,6 +43,28 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+
+# IronSource mediation
+mbridge_android_sdk = { module = "com.mbridge.msdk.oversea:mbridge_android_sdk", version.ref = "mbridge_android_sdk" }
+play-services-ads-identifier = { module = "com.google.android.gms:play-services-ads-identifier", version.ref = "playServicesAdsIdentifier" }
+play-services-appset = { module = "com.google.android.gms:play-services-appset", version.ref = "playServicesAppset" }
+play-services-basement = { module = "com.google.android.gms:play-services-basement", version.ref = "playServicesBasement" }
+
+# IS mediation Facebook
+facebook-adapter = { module = "com.unity3d.ads-mediation:facebook-adapter", version.ref = "facebookAdapter" }
+audience-network-sdk = { module = "com.facebook.android:audience-network-sdk", version.ref = "audienceNetworkSdk" }
+
+# IS Unity
+unity-ads = { module = "com.unity3d.ads:unity-ads", version.ref = "unityAds" }
+unityads-adapter = { module = "com.unity3d.ads-mediation:unityads-adapter", version.ref = "unityadsAdapter" }
+
+# IS Chartboost
+chartboost-adapter = { module = "com.unity3d.ads-mediation:chartboost-adapter", version.ref = "chartboostAdapter" }
+chartboost-sdk = { module = "com.chartboost:chartboost-sdk", version.ref = "chartboostSdk" }
+
+# IS Mintegral
+mediation-sdk = { module = "com.unity3d.ads-mediation:mediation-sdk", version.ref = "mediationSdk" }
+mintegral-adapter = { module = "com.unity3d.ads-mediation:mintegral-adapter", version.ref = "mintegralAdapter" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
