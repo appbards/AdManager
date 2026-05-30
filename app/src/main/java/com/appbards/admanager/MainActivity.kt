@@ -7,7 +7,6 @@ import androidx.lifecycle.lifecycleScope
 import com.appbards.admanager.core.AdManager
 import com.appbards.admanager.core.config.AdConfig
 import com.appbards.admanager.core.model.InitializationResult
-import com.appbards.admanager.ironsource.IronSourceProvider
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -43,18 +42,18 @@ class MainActivity : AppCompatActivity() {
                 showInterstitialOnFirstCall = true
             )
 
-            val provider = IronSourceProvider(this@MainActivity)
+//            val provider = IronSourceProvider(this@MainActivity)
 
-            AdManager.initializeWithLoading(
-                adProvider = provider,
-                config = config
-            ) { result ->
-                when (result) {
-                    is InitializationResult.Failed -> startMainActivity()
-                    is InitializationResult.Success -> startMainActivity()
-                    is InitializationResult.Timeout -> startMainActivity()
-                }
-            }
+//            AdManager.initializeWithLoading(
+//                adProvider = provider,
+//                config = config
+//            ) { result ->
+//                when (result) {
+//                    is InitializationResult.Failed -> startMainActivity()
+//                    is InitializationResult.Success -> startMainActivity()
+//                    is InitializationResult.Timeout -> startMainActivity()
+//                }
+//            }
         }
     }
 
