@@ -9,8 +9,6 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
-
-
     }
 }
 dependencyResolutionManagement {
@@ -18,6 +16,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+
+        // IronSource (required for AdMob IronSource mediation adapter)
+        maven(url = "https://android-sdk.is.com/")
 
         // Chartboost
         maven(url = "https://cboost.jfrog.io/artifactory/chartboost-ads/")
@@ -31,3 +32,4 @@ rootProject.name = "AdManager"
 include(":app")
 include(":admanager-core")
 include(":admanager-ironsource")
+include(":admanager-admob")

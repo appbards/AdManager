@@ -8,6 +8,9 @@ data class AdConfig(
     val loadingMinTime: Long = 3000L,
     val loadingMaxTime: Long = 10000L,
 
+    // Test device IDs for AdMob (SHA-1 hashes shown in logcat on first run)
+    val testDeviceIds: List<String> = emptyList(),
+
     // Auto-preload settings
     val autoPreloadInterstitial: Boolean = true,
     val autoPreloadRewarded: Boolean = true,
@@ -16,6 +19,8 @@ data class AdConfig(
     val interstitialPlacementId: String = "default_interstitial",
     val rewardedPlacementId: String = "default_rewarded",
     val bannerPlacementId: String = "default_banner",
+    val nativePlacementId: String = "default_native",
+    val appOpenPlacementId: String = "default_app_open",
 
     // Frequency control for interstitial
     val interstitialFrequency: Int = 1,  // Show every X calls (1 = show every time)

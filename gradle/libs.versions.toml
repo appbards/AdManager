@@ -11,6 +11,19 @@ material = "1.13.0"
 activity = "1.12.2"
 constraintlayout = "2.2.1"
 
+# AdMob
+playServicesAds = "25.3.0"
+userMessagingPlatform = "3.2.0"
+
+# AdMob mediation adapters
+admobAdapterIronSource   = "9.4.2.0"
+admobAdapterUnity        = "4.18.0.0"
+admobUnityAds            = "4.18.0"
+admobAdapterChartboost   = "9.12.0.0"
+admobAdapterLiftoff      = "7.7.4.0"
+admobAdapterMeta         = "6.21.0.3"
+admobAdapterMintegral    = "17.1.61.0"
+
 # IronSource mediation
 mbridge_android_sdk = "17.1.51"
 playServicesAdsIdentifier = "18.3.0"
@@ -22,7 +35,7 @@ audienceNetworkSdk = "6.21.0"
 facebookAdapter = "5.2.0"
 
 # IS Unity
-unityAds = "4.17.0"
+unityAds = "4.18.0"
 unityadsAdapter = "5.6.0"
 
 # IS Chartboost
@@ -43,6 +56,19 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+
+# AdMob core
+play-services-ads          = { module = "com.google.android.gms:play-services-ads",          version.ref = "playServicesAds" }
+user-messaging-platform    = { module = "com.google.android.ump:user-messaging-platform",    version.ref = "userMessagingPlatform" }
+
+# AdMob mediation adapters
+admob-adapter-ironsource   = { module = "com.google.ads.mediation:ironsource",               version.ref = "admobAdapterIronSource" }
+admob-adapter-unity        = { module = "com.google.ads.mediation:unity",                    version.ref = "admobAdapterUnity" }
+#admob-adapter-unity-ads    = { module = "com.unity3d.ads:unity-ads",                         version.ref = "admobUnityAds" }
+admob-adapter-chartboost   = { module = "com.google.ads.mediation:chartboost",               version.ref = "admobAdapterChartboost" }
+admob-adapter-liftoff      = { module = "com.google.ads.mediation:vungle",                   version.ref = "admobAdapterLiftoff" }
+admob-adapter-meta         = { module = "com.google.ads.mediation:facebook",                 version.ref = "admobAdapterMeta" }
+admob-adapter-mintegral    = { module = "com.google.ads.mediation:mintegral",                version.ref = "admobAdapterMintegral" }
 
 # IronSource mediation
 mbridge_android_sdk = { module = "com.mbridge.msdk.oversea:mbridge_android_sdk", version.ref = "mbridge_android_sdk" }
