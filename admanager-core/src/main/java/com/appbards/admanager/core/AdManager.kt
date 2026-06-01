@@ -479,6 +479,7 @@ object AdManager {
      * @param size Banner size (default: ADAPTIVE)
      * @return The [IBannerAd] instance, or null if the provider is not initialized
      */
+    @JvmOverloads
     fun loadBanner(
         container: ViewGroup,
         size: BannerSize = BannerSize.ADAPTIVE,
