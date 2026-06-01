@@ -12,6 +12,7 @@ data class AdConfig(
     val testDeviceIds: List<String> = emptyList(),
 
     // Auto-preload settings
+    val autoPreloadAppOpen: Boolean = true,
     val autoPreloadInterstitial: Boolean = true,
     val autoPreloadRewarded: Boolean = true,
 

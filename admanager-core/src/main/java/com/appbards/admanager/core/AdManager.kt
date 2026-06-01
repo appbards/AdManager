@@ -2,13 +2,18 @@ package com.appbards.admanager.core
 
 import android.app.Activity
 import android.view.ViewGroup
+import com.appbards.admanager.core.callback.AppOpenAdCallback
+import com.appbards.admanager.core.callback.BannerAdCallback
 import com.appbards.admanager.core.callback.InterstitialAdCallback
+import com.appbards.admanager.core.callback.NativeAdCallback
 import com.appbards.admanager.core.callback.RewardedAdCallback
 import com.appbards.admanager.core.config.AdConfig
 import com.appbards.admanager.core.model.AdError
 import com.appbards.admanager.core.model.AdResult
 import com.appbards.admanager.core.model.AdReward
+import com.appbards.admanager.core.model.ErrorCode
 import com.appbards.admanager.core.model.InitializationResult
+import com.appbards.admanager.core.nativeAd.NativeAdViewBinder
 import com.appbards.admanager.core.provider.BannerSize
 import com.appbards.admanager.core.provider.IAdProvider
 import com.appbards.admanager.core.provider.IAppOpenAd
@@ -17,6 +22,7 @@ import com.appbards.admanager.core.provider.IInterstitialAd
 import com.appbards.admanager.core.provider.INativeAd
 import com.appbards.admanager.core.provider.IRewardedAd
 import com.appbards.admanager.core.util.AdLogger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,6 +36,7 @@ object AdManager {
     private var config: AdConfig? = null
 
     // Internal ad instances
+    private var appOpenAd: IAppOpenAd? = null
     private var interstitialAd: IInterstitialAd? = null
     private var rewardedAd: IRewardedAd? = null
 
@@ -61,6 +68,7 @@ object AdManager {
                         preloadRewarded()
                     }
                 }
+
                 is AdResult.Failure -> {
                     AdLogger.e("AdManager initialization failed: ${result.error.message}")
                 }
@@ -116,19 +124,26 @@ object AdManager {
                     when (val result = initResult) {
                         is AdResult.Success -> {
                             AdLogger.i("Initialization completed in ${elapsed}ms (delayed to minTime)")
-                            onComplete(InitializationResult.Success(
-                                actualInitTime = elapsed,
-                                wasDelayed = true
-                            ))
+                            onComplete(
+                                InitializationResult.Success(
+                                    actualInitTime = elapsed,
+                                    wasDelayed = true
+                                )
+                            )
                         }
+
                         is AdResult.Failure -> {
                             AdLogger.e("Initialization failed: ${result.error.message} (delayed to minTime)")
-                            onComplete(InitializationResult.Failed(
-                                error = result.error,
-                                wasDelayed = true
-                            ))
+                            onComplete(
+                                InitializationResult.Failed(
+                                    error = result.error,
+                                    wasDelayed = true
+                                )
+                            )
                         }
-                        null -> { /* shouldn't happen */ }
+
+                        null -> { /* shouldn't happen */
+                        }
                     }
                 } else {
                     // Init still running after minTime - wait up to maxTime
@@ -145,34 +160,148 @@ object AdManager {
                         when (val result = initResult) {
                             is AdResult.Success -> {
                                 AdLogger.i("Initialization completed in ${elapsed}ms")
-                                onComplete(InitializationResult.Success(
-                                    actualInitTime = elapsed,
-                                    wasDelayed = false
-                                ))
+                                onComplete(
+                                    InitializationResult.Success(
+                                        actualInitTime = elapsed,
+                                        wasDelayed = false
+                                    )
+                                )
                             }
+
                             is AdResult.Failure -> {
                                 AdLogger.e("Initialization failed: ${result.error.message}")
-                                onComplete(InitializationResult.Failed(
-                                    error = result.error,
-                                    wasDelayed = false
-                                ))
+                                onComplete(
+                                    InitializationResult.Failed(
+                                        error = result.error,
+                                        wasDelayed = false
+                                    )
+                                )
                             }
-                            null -> { /* shouldn't happen */ }
+
+                            null -> { /* shouldn't happen */
+                            }
                         }
                     } else {
                         // Timed out at maxTime
                         initJob.cancel()
                         AdLogger.w("Initialization timed out at maxTime (${config.loadingMaxTime}ms)")
-                        onComplete(InitializationResult.Timeout(
-                            partialError = (initResult as? AdResult.Failure)?.error
-                        ))
+                        onComplete(
+                            InitializationResult.Timeout(
+                                partialError = (initResult as? AdResult.Failure)?.error
+                            )
+                        )
                     }
                 }
             }
         }
     }
 
+    suspend fun initializeWithLoadingAndAppOpen(
+        adProvider: IAdProvider,
+        config: AdConfig,
+        activity: Activity,
+        onComplete: (InitializationResult) -> Unit
+    ) {
+        this.config = config
+        AdLogger.enable(config.enableLogging)
+        val startTime = System.currentTimeMillis()
+
+        coroutineScope {
+            // Signal: true = app open is ready, false = not ready
+            val appOpenSignal = CompletableDeferred<Boolean>()
+            var sdkResult: AdResult? = null
+
+            // Job 1: SDK init → then App Open load sequentially
+            launch {
+                sdkResult = adProvider.initialize(config)
+                if (sdkResult is AdResult.Success) {
+                    provider = adProvider
+
+                    // App Open gets full network priority
+                    preloadAppOpenSuspend()
+                    appOpenSignal.complete(appOpenAd?.isReady() == true)
+
+                    // Now kick off the rest — they load in the background
+                    // while the app open ad is showing (or after it's skipped)
+                    if (config.autoPreloadInterstitial) preloadInterstitial()
+                    if (config.autoPreloadRewarded) preloadRewarded()
+                } else {
+                    appOpenSignal.complete(false)
+                }
+            }
+
+            // Job 2: Timing control
+            launch {
+                // Always wait at least minTime
+                delay(config.loadingMinTime)
+
+                val remaining = config.loadingMaxTime - (System.currentTimeMillis() - startTime)
+
+                // Wait for the app open signal within the remaining window
+                val appOpenReady = when {
+                    appOpenSignal.isCompleted -> appOpenSignal.getCompleted()
+                    remaining > 0 -> withTimeoutOrNull(remaining) { appOpenSignal.await() } ?: false
+                    else -> false
+                }
+
+                val elapsed = System.currentTimeMillis() - startTime
+
+                val result = when {
+                    provider == null -> InitializationResult.Timeout(
+                        partialError = (sdkResult as? AdResult.Failure)?.error
+                    )
+
+                    sdkResult is AdResult.Failure -> InitializationResult.Failed(
+                        error = (sdkResult as AdResult.Failure).error,
+                        wasDelayed = true
+                    )
+
+                    else -> InitializationResult.Success(
+                        actualInitTime = elapsed,
+                        wasDelayed = true
+                    )
+                }
+
+                if (appOpenReady) {
+                    showAppOpen(activity) { onComplete(result) }
+                } else {
+                    onComplete(result)
+                }
+            }
+        }
+    }
+
     fun isInitialized(): Boolean = provider?.isInitialized() ?: false
+
+    // ========== APP OPEN AD ==========
+
+    fun isAppOpenReady(): Boolean = appOpenAd?.isReady() ?: false
+
+    private suspend fun preloadAppOpenSuspend(): AdResult {
+        val placementId = config?.appOpenPlacementId ?: return AdResult.Failure(
+            AdError(ErrorCode.PROVIDER_ERROR, "No app open placement ID configured")
+        )
+        appOpenAd = provider?.getAppOpenAd(placementId) ?: return AdResult.Failure(
+            AdError(ErrorCode.PROVIDER_ERROR, "Provider not initialized")
+        )
+        return appOpenAd!!.load()
+    }
+
+    fun showAppOpen(activity: Activity, onComplete: () -> Unit) {
+        if (appOpenAd?.isReady() == true) {
+            appOpenAd?.show(activity, object : AppOpenAdCallback {
+                override fun onAdClosed() {
+                    onComplete()
+                }
+
+                override fun onAdFailedToShow(error: AdError) {
+                    onComplete()
+                }
+            })
+        } else {
+            onComplete()
+        }
+    }
 
     // ========== INTERSTITIAL AD ==========
 
@@ -350,7 +479,11 @@ object AdManager {
      * @param size Banner size (default: ADAPTIVE)
      * @return The [IBannerAd] instance, or null if the provider is not initialized
      */
-    fun loadBanner(container: ViewGroup, size: BannerSize = BannerSize.ADAPTIVE): IBannerAd? {
+    fun loadBanner(
+        container: ViewGroup,
+        size: BannerSize = BannerSize.ADAPTIVE,
+        callback: BannerAdCallback? = null
+    ): IBannerAd? {
         val placementId = config?.bannerPlacementId ?: "default_banner"
 
         AdLogger.d("Loading banner ad for placement: $placementId")
@@ -360,18 +493,22 @@ object AdManager {
         banner.load(container, size, object : com.appbards.admanager.core.callback.BannerAdCallback {
             override fun onAdLoaded() {
                 AdLogger.d("Banner ad loaded and added to container")
+                callback?.onAdLoaded()
             }
 
             override fun onAdFailedToLoad(error: AdError) {
                 AdLogger.e("Banner failed to load: ${error.message}")
+                callback?.onAdFailedToLoad(error)
             }
 
             override fun onAdShown() {
                 AdLogger.d("Banner ad displayed")
+                callback?.onAdShown()
             }
 
             override fun onAdFailedToShow(error: AdError) {
                 AdLogger.e("Banner failed to display: ${error.message}")
+                callback?.onAdFailedToShow(error)
             }
         })
 
@@ -388,23 +525,83 @@ object AdManager {
         banner?.destroy()
     }
 
-    // ========== LEGACY METHODS (for Native & App Open - to be improved later) ==========
+    // ========== NATIVE AD ==========
 
-    fun getNativeAd(placementId: String): INativeAd? {
-        return provider?.getNativeAd(placementId)
+    /*
+        private var nativeAd: INativeAd? = null
+
+        override fun onCreate(...) {
+          val adView = layoutInflater.inflate(R.layout.my_native_ad, null) as NativeAdView
+         val binder = NativeAdViewBinder(
+                rootView        = adView,
+                headlineView    = adView.findViewById(R.id.headline),
+                bodyView        = adView.findViewById(R.id.body),
+                mediaView       = adView.findViewById(R.id.media),
+                callToActionView = adView.findViewById(R.id.cta)
+         )
+
+         nativeAd = AdManager.loadNativeAd(nativeContainer, binder, object : NativeAdCallback {
+            override fun onAdShown() { placeholder.visibility = View.GONE }
+                override fun onAdFailedToShow(error: AdError) { placeholder.visibility = View.GONE }
+            })
+        }
+
+        override fun onDestroy() {
+           super.onDestroy()
+          nativeAd?.destroy()
+          nativeAd = null
+        }
+     */
+
+    fun loadNativeAd(
+        container: ViewGroup,
+        binder: NativeAdViewBinder,
+        callback: NativeAdCallback? = null
+    ): INativeAd? {
+        val placementId = config?.nativePlacementId ?: return null
+        val native = provider?.getNativeAd(placementId) ?: return null
+
+        adScope.launch {
+            val result = native.load()
+            if (result is AdResult.Success) {
+                native.show(container, binder, object : NativeAdCallback {
+                    override fun onAdShown() {
+                        AdLogger.d("Native ad shown")
+                        callback?.onAdShown()
+                    }
+
+                    override fun onAdFailedToShow(error: AdError) {
+                        AdLogger.e("Native ad failed to show: ${error.message}")
+                        callback?.onAdFailedToShow(error)
+                    }
+
+                    override fun onNativeAdImpression() {
+                        callback?.onNativeAdImpression()
+                    }
+
+                    override fun onAdClicked() {
+                        callback?.onAdClicked()
+                    }
+                })
+            } else if (result is AdResult.Failure) {
+                AdLogger.e("Native ad failed to load: ${result.error.message}")
+                callback?.onAdFailedToLoad(result.error)
+            }
+        }
+
+        return native
     }
 
-    fun getAppOpenAd(placementId: String): IAppOpenAd? {
-        return provider?.getAppOpenAd(placementId)
-    }
 
     // ========== CLEANUP ==========
 
     fun destroy() {
         AdLogger.i("Destroying AdManager")
+        provider?.destroy()
         interstitialAd?.destroy()
         rewardedAd?.destroy()
-        provider?.destroy()
+        appOpenAd?.destroy()
+        appOpenAd = null
         interstitialAd = null
         rewardedAd = null
         provider = null
