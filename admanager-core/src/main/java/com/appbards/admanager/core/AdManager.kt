@@ -32,7 +32,6 @@ object AdManager {
     // Internal ad instances
     private var interstitialAd: IInterstitialAd? = null
     private var rewardedAd: IRewardedAd? = null
-    private var bannerAd: IBannerAd? = null
 
     // Coroutine scope for background operations
     private val adScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -338,19 +337,27 @@ object AdManager {
     // ========== BANNER AD ==========
 
     /**
-     * Load and display banner in container
-     * @param container The ViewGroup to add banner to
+     * Load and display banner in container.
+     * Returns an [IBannerAd] instance that the caller must manage per-screen:
+     *   - call [IBannerAd.pause] in onPause
+     *   - call [IBannerAd.resume] in onResume
+     *   - call [IBannerAd.destroy] in onDestroy
+     *
+     * Each Activity/Fragment should hold its own reference so that multiple
+     * screens can show banners simultaneously without interfering with each other.
+     *
+     * @param container The ViewGroup to add the banner to
      * @param size Banner size (default: ADAPTIVE)
+     * @return The [IBannerAd] instance, or null if the provider is not initialized
      */
-    fun loadBanner(container: ViewGroup, size: BannerSize = BannerSize.ADAPTIVE) {
+    fun loadBanner(container: ViewGroup, size: BannerSize = BannerSize.ADAPTIVE): IBannerAd? {
         val placementId = config?.bannerPlacementId ?: "default_banner"
 
         AdLogger.d("Loading banner ad for placement: $placementId")
 
-        bannerAd?.destroy()
-        bannerAd = provider?.getBannerAd(placementId)
+        val banner = provider?.getBannerAd(placementId) ?: return null
 
-        bannerAd?.load(container, size, object : com.appbards.admanager.core.callback.BannerAdCallback {
+        banner.load(container, size, object : com.appbards.admanager.core.callback.BannerAdCallback {
             override fun onAdLoaded() {
                 AdLogger.d("Banner ad loaded and added to container")
             }
@@ -367,31 +374,18 @@ object AdManager {
                 AdLogger.e("Banner failed to display: ${error.message}")
             }
         })
+
+        return banner
     }
 
-
     /**
-     * Remove banner from view
+     * Remove banner from its container and release resources.
+     * Pass the [IBannerAd] instance returned by [loadBanner].
      */
-    fun removeBanner(container: ViewGroup) {
+    fun removeBanner(container: ViewGroup, banner: IBannerAd? = null) {
         AdLogger.d("Removing banner ad")
         container.removeAllViews()
-        bannerAd?.destroy()
-        bannerAd = null
-    }
-
-    /**
-     * Pause banner (call in onPause)
-     */
-    fun pauseBanner() {
-        bannerAd?.pause()
-    }
-
-    /**
-     * Resume banner (call in onResume)
-     */
-    fun resumeBanner() {
-        bannerAd?.resume()
+        banner?.destroy()
     }
 
     // ========== LEGACY METHODS (for Native & App Open - to be improved later) ==========
@@ -410,11 +404,9 @@ object AdManager {
         AdLogger.i("Destroying AdManager")
         interstitialAd?.destroy()
         rewardedAd?.destroy()
-        bannerAd?.destroy()
         provider?.destroy()
         interstitialAd = null
         rewardedAd = null
-        bannerAd = null
         provider = null
         config = null
         interstitialCallCount = 0
