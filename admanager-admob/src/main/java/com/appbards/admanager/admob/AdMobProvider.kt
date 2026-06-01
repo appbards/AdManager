@@ -1,6 +1,11 @@
 package com.appbards.admanager.admob
 
 import android.app.Activity
+import com.appbards.admanager.admob.appOpen.AdMobAppOpenAd
+import com.appbards.admanager.admob.banner.AdMobBannerAd
+import com.appbards.admanager.admob.interstitial.AdMobInterstitialAd
+import com.appbards.admanager.admob.nativeAd.AdMobNativeAd
+import com.appbards.admanager.admob.rewarded.AdMobRewardedAd
 import com.appbards.admanager.core.config.AdConfig
 import com.appbards.admanager.core.model.AdError
 import com.appbards.admanager.core.model.AdResult
@@ -95,31 +100,29 @@ class AdMobProvider(
         }
     }
 
-    override fun isInitialized(): Boolean {
-        TODO("Not yet implemented")
+    override fun isInitialized(): Boolean = initialized
+
+    override fun getRewardedAd(placementId: String): IRewardedAd {
+        return AdMobRewardedAd(activity, placementId)
     }
 
-    override fun getRewardedAd(placementId: String): IRewardedAd? {
-        TODO("Not yet implemented")
+    override fun getInterstitialAd(placementId: String): IInterstitialAd {
+        return AdMobInterstitialAd(activity, placementId)
     }
 
-    override fun getInterstitialAd(placementId: String): IInterstitialAd? {
-        TODO("Not yet implemented")
+    override fun getBannerAd(placementId: String): IBannerAd {
+        return AdMobBannerAd(activity, placementId)
     }
 
-    override fun getBannerAd(placementId: String): IBannerAd? {
-        TODO("Not yet implemented")
+    override fun getNativeAd(placementId: String): INativeAd {
+        return AdMobNativeAd(activity, placementId)
     }
 
-    override fun getNativeAd(placementId: String): INativeAd? {
-        TODO("Not yet implemented")
-    }
-
-    override fun getAppOpenAd(placementId: String): IAppOpenAd? {
-        TODO("Not yet implemented")
+    override fun getAppOpenAd(placementId: String): IAppOpenAd {
+        return AdMobAppOpenAd(activity, placementId)
     }
 
     override fun destroy() {
-        TODO("Not yet implemented")
+        initialized = false
     }
 }
