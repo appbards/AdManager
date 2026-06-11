@@ -34,6 +34,10 @@ kotlin {
     }
 }
 
+configurations.all {
+    exclude(group = "com.unity3d.ads-mediation", module = "adquality-sdk")
+}
+
 dependencies {
     // AdManager Core
     api(project(":admanager-core"))
