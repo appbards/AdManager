@@ -12,6 +12,11 @@ import android.widget.TextView
  *
  * All fields except [rootView] are optional. Only non-null views
  * will be populated and registered with the ad SDK.
+ *
+ * When [preferIcon] is true the media view is hidden and the icon is shown
+ * instead — use this for compact placements where the media view would be too
+ * big for the available space. Provide both [mediaView] and [iconView] in your
+ * layout and toggle this flag per call site.
  */
 data class NativeAdViewBinder(
     val rootView: ViewGroup,
@@ -23,5 +28,6 @@ data class NativeAdViewBinder(
     val iconView: ImageView? = null,
     val storeView: TextView? = null,
     val priceView: TextView? = null,
-    val starRatingView: View? = null
+    val starRatingView: View? = null,
+    val preferIcon: Boolean = false
 )
