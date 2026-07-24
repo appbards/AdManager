@@ -32,7 +32,14 @@ class AdMobProvider(
     private var initialized = false
     private lateinit var consentInformation: ConsentInformation
 
-    override suspend fun initialize(config: AdConfig): AdResult =
+    /**
+     * Gather UMP consent. Runs interactively and suspends until the user has
+     * dismissed the consent form (or it's determined none is required). This is
+     * intentionally separate from [initialize] so the caller can complete consent
+     * before starting any timed loading window — a loading timeout must never be
+     * able to dismiss the consent form.
+     */
+    override suspend fun gatherConsent(config: AdConfig): Unit =
         suspendCancellableCoroutine { continuation ->
             try {
                 consentInformation = UserMessagingPlatform.getConsentInformation(activity)
@@ -63,14 +70,24 @@ class AdMobProvider(
                         UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { formError ->
                             // formError is non-null if the form failed to load/show.
                             // Either way we proceed — consent failure must never block ads.
-                            initializeMobileAds(config, continuation)
+                            if (continuation.isActive) continuation.resume(Unit)
                         }
                     },
                     { _ ->
-                        // Consent info request failed — proceed to MobileAds init anyway
-                        initializeMobileAds(config, continuation)
+                        // Consent info request failed — proceed anyway.
+                        if (continuation.isActive) continuation.resume(Unit)
                     }
                 )
+            } catch (e: Exception) {
+                // Never let a consent failure block the app.
+                if (continuation.isActive) continuation.resume(Unit)
+            }
+        }
+
+    override suspend fun initialize(config: AdConfig): AdResult =
+        suspendCancellableCoroutine { continuation ->
+            try {
+                initializeMobileAds(config, continuation)
             } catch (e: Exception) {
                 continuation.resume(
                     AdResult.Failure(

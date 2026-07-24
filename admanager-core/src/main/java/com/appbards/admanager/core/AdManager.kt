@@ -54,6 +54,9 @@ object AdManager {
         AdLogger.enable(config.enableLogging)
         AdLogger.i("Initializing AdManager with ${adProvider::class.simpleName}")
 
+        // Gather consent first (interactive) so nothing races it later.
+        adProvider.gatherConsent(config)
+
         return adProvider.initialize(config).also { result ->
             when (result) {
                 is AdResult.Success -> {
@@ -90,6 +93,10 @@ object AdManager {
         this.config = config
         AdLogger.enable(config.enableLogging)
         AdLogger.i("Initializing AdManager with loading constraints: min=${config.loadingMinTime}ms, max=${config.loadingMaxTime}ms")
+
+        // Consent is interactive and user-paced — gather it BEFORE the timing
+        // window starts, otherwise the loading timeout can dismiss the consent form.
+        adProvider.gatherConsent(config)
 
         val startTime = System.currentTimeMillis()
 
@@ -204,6 +211,12 @@ object AdManager {
     ) {
         this.config = config
         AdLogger.enable(config.enableLogging)
+
+        // Consent is interactive and user-paced — gather it BEFORE the timing
+        // window starts, otherwise the loading timeout can dismiss the consent
+        // form and navigate away before the user can respond.
+        adProvider.gatherConsent(config)
+
         val startTime = System.currentTimeMillis()
 
         coroutineScope {
