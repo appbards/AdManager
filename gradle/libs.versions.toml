@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.2.0"
 kotlin = "2.3.0"
 coreKtx = "1.13.1"
 junit = "4.13.2"
@@ -12,17 +12,17 @@ activity = "1.12.2"
 constraintlayout = "2.2.1"
 
 # AdMob
-playServicesAds = "25.3.0"
+playServicesAds = "25.4.0"
 userMessagingPlatform = "3.2.0"
 
 # AdMob mediation adapters
-admobAdapterIronSource   = "9.4.2.0"
-admobAdapterUnity        = "4.18.0.0"
+admobAdapterIronSource   = "9.5.0.0"
+admobAdapterUnity        = "4.19.0.0"
 admobUnityAds            = "4.18.0"
-admobAdapterChartboost   = "9.12.0.0"
-admobAdapterLiftoff      = "7.7.4.0"
-admobAdapterMeta         = "6.21.0.3"
-admobAdapterMintegral    = "17.1.61.0"
+admobAdapterChartboost   = "9.12.1.1"
+admobAdapterLiftoff      = "7.7.6.0"
+admobAdapterMeta         = "6.21.0.4"
+admobAdapterMintegral    = "17.1.61.1"
 
 # IronSource mediation
 mbridge_android_sdk = "17.1.51"
