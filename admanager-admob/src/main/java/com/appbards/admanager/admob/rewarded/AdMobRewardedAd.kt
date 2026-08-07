@@ -1,7 +1,6 @@
 package com.appbards.admanager.admob.rewarded
 
 import android.app.Activity
-import android.content.Context
 import com.appbards.admanager.core.callback.RewardedAdCallback
 import com.appbards.admanager.core.model.AdError
 import com.appbards.admanager.core.model.AdResult
@@ -17,7 +16,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 class AdMobRewardedAd (
-    private val context: Context,
+    // Activity context is required by ironSource mediation — passing an
+    // application Context here causes ironSource ad loads to fail.
+    private val activity: Activity,
     private val adUnitId: String
 ) : IRewardedAd {
 
@@ -27,7 +28,7 @@ class AdMobRewardedAd (
         val adRequest = AdRequest.Builder().build()
 
         RewardedAd.load(
-            context,
+            activity,
             adUnitId,
             adRequest,
             object : RewardedAdLoadCallback() {

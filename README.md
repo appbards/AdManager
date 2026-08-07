@@ -236,6 +236,32 @@ showInterstitialOnFirstCall: Boolean = true // Show on first call
 
 Check out the [app module](app/) for a complete working example with all ad types.
 
+## AdMob Mediation: Activity configuration (Chartboost)
+
+The `admanager-admob` module bundles the Chartboost mediation adapter. Chartboost
+requires that **any activity from which you show a fullscreen ad** (interstitial,
+rewarded, or app-open) **and that supports rotation** declare the following in
+**your app's** `AndroidManifest.xml`:
+
+```xml
+<activity
+    android:name=".YourAdShowingActivity"
+    android:configChanges="keyboardHidden|orientation|screenSize" />
+```
+
+Without it, rotating the device while a Chartboost fullscreen ad is on screen
+recreates the activity and can break the ad (dropped callbacks / dismissed ad).
+
+Notes:
+
+- This **cannot** be provided by the library — manifest merging can't add attributes
+  to activities your app declares, so each consumer must apply it to their own
+  ad-showing activity. See the sample app's [`MainActivity`](app/src/main/AndroidManifest.xml)
+  for a reference.
+- It's only needed on activities that present **fullscreen** Chartboost ads and can
+  rotate. Banner-only activities and orientation-locked activities don't need it.
+- If you don't receive Chartboost demand, it has no effect.
+
 ## Proguard Rules
 
 If you use ProGuard/R8, the library handles obfuscation rules automatically. No additional configuration needed.

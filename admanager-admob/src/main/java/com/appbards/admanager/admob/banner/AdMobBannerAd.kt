@@ -1,6 +1,6 @@
 package com.appbards.admanager.admob.banner
 
-import android.content.Context
+import android.app.Activity
 import android.view.ViewGroup
 import com.appbards.admanager.core.callback.BannerAdCallback
 import com.appbards.admanager.core.model.AdError
@@ -14,7 +14,9 @@ import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
 
 class AdMobBannerAd(
-    private val context: Context,
+    // Activity context is required by ironSource mediation — passing an
+    // application Context here causes ironSource ad loads to fail.
+    private val activity: Activity,
     private val adUnitId: String
 ) : IBannerAd {
 
@@ -29,7 +31,7 @@ class AdMobBannerAd(
         // Clean up any existing banner before loading a new one
         adView?.destroy()
 
-        val adView = AdView(context).also { this.adView = it }
+        val adView = AdView(activity).also { this.adView = it }
         adView.adUnitId = adUnitId
         adView.setAdSize(size.toAdMobSize(container))
 
@@ -91,11 +93,11 @@ class AdMobBannerAd(
         BannerSize.FULL_BANNER -> AdSize.FULL_BANNER
         BannerSize.LEADERBOARD -> AdSize.LEADERBOARD
         BannerSize.ADAPTIVE -> {
-            val displayMetrics = context.resources.displayMetrics
+            val displayMetrics = activity.resources.displayMetrics
             val adWidth = (container.width / displayMetrics.density).toInt()
                 .takeIf { it > 0 }
                 ?: (displayMetrics.widthPixels / displayMetrics.density).toInt()
-            AdSize.getLargeAnchoredAdaptiveBannerAdSize(context, adWidth)
+            AdSize.getLargeAnchoredAdaptiveBannerAdSize(activity, adWidth)
         }
     }
 }

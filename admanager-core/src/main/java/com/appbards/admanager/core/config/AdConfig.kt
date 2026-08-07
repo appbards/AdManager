@@ -11,6 +11,11 @@ data class AdConfig(
     // Test device IDs for AdMob (SHA-1 hashes shown in logcat on first run)
     val testDeviceIds: List<String> = emptyList(),
 
+    // Privacy — CCPA / US state "Do Not Sell My Personal Information".
+    // When true, forwarded to the ironSource mediation adapter before init.
+    // Set this from the user's actual opt-out choice, not unconditionally.
+    val ccpaDoNotSell: Boolean = false,
+
     // Auto-preload settings
     val autoPreloadAppOpen: Boolean = true,
     val autoPreloadInterstitial: Boolean = true,

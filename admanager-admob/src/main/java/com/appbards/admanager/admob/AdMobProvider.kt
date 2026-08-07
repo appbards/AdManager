@@ -16,8 +16,12 @@ import com.appbards.admanager.core.provider.IBannerAd
 import com.appbards.admanager.core.provider.IInterstitialAd
 import com.appbards.admanager.core.provider.INativeAd
 import com.appbards.admanager.core.provider.IRewardedAd
+import com.chartboost.sdk.Chartboost
+import com.chartboost.sdk.privacy.model.CCPA
+import com.vungle.ads.VunglePrivacySettings
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
+import com.unity3d.mediation.LevelPlay
 import com.google.android.ump.ConsentDebugSettings
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
@@ -101,6 +105,19 @@ class AdMobProvider(
         config: AdConfig,
         continuation: kotlin.coroutines.Continuation<AdResult>
     ) {
+        // Forward the CCPA "do not sell" choice to mediated networks whose
+        // adapters don't read it automatically. Must run BEFORE MobileAds.initialize
+        // so it propagates to each network's SDK (see each network's Legacy
+        // mediation guide, Step 4).
+        if (config.ccpaDoNotSell) {
+            // ironSource / LevelPlay
+            LevelPlay.setMetaData("do_not_sell", "true")
+            // Chartboost — OPT_OUT_SALE mirrors "do not sell my personal information"
+            Chartboost.addDataUseConsent(activity, CCPA(CCPA.CCPA_CONSENT.OPT_OUT_SALE))
+            // Liftoff / Vungle — inverted semantics: true = opted IN, false = opted OUT
+            VunglePrivacySettings.setCCPAStatus(false)
+        }
+
         // Register physical test devices (emulators are handled automatically by the SDK)
         if (config.testDeviceIds.isNotEmpty()) {
             MobileAds.setRequestConfiguration(

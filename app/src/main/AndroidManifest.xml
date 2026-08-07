@@ -17,8 +17,13 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3940256099942544~3347511713" />
 
+        <!-- configChanges is required by Chartboost for any activity that shows
+             its ads and supports orientation changes (see AdMob Chartboost
+             mediation guide, Step 5). Without it, a rotation recreates the
+             activity and can break a showing Chartboost fullscreen ad. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

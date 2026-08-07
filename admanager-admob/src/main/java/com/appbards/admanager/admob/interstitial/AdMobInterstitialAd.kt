@@ -1,7 +1,6 @@
 package com.appbards.admanager.admob.interstitial
 
 import android.app.Activity
-import android.content.Context
 import com.appbards.admanager.core.callback.InterstitialAdCallback
 import com.appbards.admanager.core.model.AdError
 import com.appbards.admanager.core.model.AdResult
@@ -16,7 +15,9 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 class AdMobInterstitialAd(
-    private val context: Context,
+    // Activity context is required by ironSource mediation — passing an
+    // application Context here causes ironSource ad loads to fail.
+    private val activity: Activity,
     private val adUnitId: String
 ) : IInterstitialAd {
 
@@ -26,7 +27,7 @@ class AdMobInterstitialAd(
         val adRequest = AdRequest.Builder().build()
 
         InterstitialAd.load(
-            context,
+            activity,
             adUnitId,
             adRequest,
             object : InterstitialAdLoadCallback() {
