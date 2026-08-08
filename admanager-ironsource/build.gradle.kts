@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.appbards.ai.landmark.admanager.ironsource"
     compileSdk {
-        version = release(35)
+        version = release(36)
     }
 
     defaultConfig {

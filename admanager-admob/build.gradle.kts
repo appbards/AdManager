@@ -7,7 +7,9 @@ plugins {
 android {
     namespace = "com.appbards.admanager.admob"
     compileSdk {
-        version = release(35)
+        // 36 required: bundled AdMob adapters pull androidx.browser:browser:1.9.0,
+        // which requires compileSdk 36+.
+        version = release(36)
     }
 
     defaultConfig {

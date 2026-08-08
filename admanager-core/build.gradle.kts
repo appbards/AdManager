@@ -7,7 +7,7 @@ plugins {
 android {
     namespace = "com.appbards.admanager.core"
     compileSdk {
-        version = release(35)
+        version = release(36)
     }
 
     defaultConfig {
