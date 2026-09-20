@@ -37,6 +37,15 @@ kotlin {
     }
 }
 
+configurations.all {
+    // The GMA Next-Gen SDK bundles its own copy of the legacy ad classes; mediation
+    // adapters still pull play-services-ads(-lite) in transitively, which would cause
+    // duplicate-symbol errors. These excludes do not travel with a published AAR, so
+    // every consuming app must repeat them.
+    exclude(group = "com.google.android.gms", module = "play-services-ads")
+    exclude(group = "com.google.android.gms", module = "play-services-ads-lite")
+}
+
 dependencies {
     // Core library (required)
 //    implementation("com.github.AppBards.AdManager:admanager-core:1.0.0")

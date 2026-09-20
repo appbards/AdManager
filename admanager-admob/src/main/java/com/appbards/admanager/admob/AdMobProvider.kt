@@ -1,6 +1,7 @@
 package com.appbards.admanager.admob
 
 import android.app.Activity
+import android.content.pm.PackageManager
 import com.appbards.admanager.admob.appOpen.AdMobAppOpenAd
 import com.appbards.admanager.admob.banner.AdMobBannerAd
 import com.appbards.admanager.admob.interstitial.AdMobInterstitialAd
@@ -19,14 +20,19 @@ import com.appbards.admanager.core.provider.IRewardedAd
 import com.chartboost.sdk.Chartboost
 import com.chartboost.sdk.privacy.model.CCPA
 import com.vungle.ads.VunglePrivacySettings
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.RequestConfiguration
+import com.google.android.libraries.ads.mobile.sdk.MobileAds
+import com.google.android.libraries.ads.mobile.sdk.common.RequestConfiguration
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationConfig
+import com.google.android.libraries.ads.mobile.sdk.initialization.InitializationStatus
+import com.google.android.libraries.ads.mobile.sdk.initialization.OnAdapterInitializationCompleteListener
 import com.unity3d.mediation.LevelPlay
 import com.google.android.ump.ConsentDebugSettings
 import com.google.android.ump.ConsentInformation
 import com.google.android.ump.ConsentRequestParameters
 import com.google.android.ump.UserMessagingPlatform
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 
 class AdMobProvider(
@@ -88,7 +94,9 @@ class AdMobProvider(
             }
         }
 
-    override suspend fun initialize(config: AdConfig): AdResult =
+    // MobileAds.initialize() must run off the main thread, and before any other
+    // GMA SDK call.
+    override suspend fun initialize(config: AdConfig): AdResult = withContext(Dispatchers.IO) {
         suspendCancellableCoroutine { continuation ->
             try {
                 initializeMobileAds(config, continuation)
@@ -100,6 +108,7 @@ class AdMobProvider(
                 )
             }
         }
+    }
 
     private fun initializeMobileAds(
         config: AdConfig,
@@ -118,20 +127,48 @@ class AdMobProvider(
             VunglePrivacySettings.setCCPAStatus(false)
         }
 
-        // Register physical test devices (emulators are handled automatically by the SDK)
+        val initConfigBuilder = InitializationConfig.Builder(resolveApplicationId(config))
+
+        // Register physical test devices (emulators are handled automatically by the
+        // SDK). The RequestConfiguration has to be bundled into InitializationConfig —
+        // MobileAds.setRequestConfiguration() must not be called before initialize().
         if (config.testDeviceIds.isNotEmpty()) {
-            MobileAds.setRequestConfiguration(
+            initConfigBuilder.setRequestConfiguration(
                 RequestConfiguration.Builder()
                     .setTestDeviceIds(config.testDeviceIds)
                     .build()
             )
         }
 
-        // OnInitializationCompleteListener fires once all mediation adapters have reported
-        MobileAds.initialize(activity.applicationContext) {
-            initialized = true
-            continuation.resume(AdResult.Success("AdMob initialized successfully"))
+        // The listener fires once all mediation adapters have reported
+        MobileAds.initialize(
+            activity.applicationContext,
+            initConfigBuilder.build(),
+            object : OnAdapterInitializationCompleteListener {
+                override fun onAdapterInitializationComplete(status: InitializationStatus) {
+                    initialized = true
+                    continuation.resume(AdResult.Success("AdMob initialized successfully"))
+                }
+            }
+        )
+    }
+
+    /**
+     * The Next-Gen SDK takes the AdMob app ID as an explicit parameter instead of
+     * reading it from the manifest, but the `<meta-data>` tag remains the source of
+     * truth (the UMP SDK still reads it). [AdConfig.appId] is only a fallback for
+     * apps that don't declare the tag.
+     */
+    private fun resolveApplicationId(config: AdConfig): String {
+        val fromManifest = try {
+            activity.packageManager
+                .getApplicationInfo(activity.packageName, PackageManager.GET_META_DATA)
+                .metaData
+                ?.getString("com.google.android.gms.ads.APPLICATION_ID")
+        } catch (e: PackageManager.NameNotFoundException) {
+            null
         }
+        return fromManifest?.takeIf { it.isNotBlank() } ?: config.appId
     }
 
     override fun isInitialized(): Boolean = initialized
@@ -149,11 +186,11 @@ class AdMobProvider(
     }
 
     override fun getNativeAd(placementId: String): INativeAd {
-        return AdMobNativeAd(activity, placementId)
+        return AdMobNativeAd(placementId)
     }
 
     override fun getAppOpenAd(placementId: String): IAppOpenAd {
-        return AdMobAppOpenAd(activity, placementId)
+        return AdMobAppOpenAd(placementId)
     }
 
     override fun destroy() {

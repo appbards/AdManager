@@ -11,17 +11,17 @@ material = "1.13.0"
 activity = "1.12.2"
 constraintlayout = "2.2.1"
 
-# AdMob
-playServicesAds = "25.4.0"
+# AdMob (GMA Next-Gen SDK)
+adsMobileSdk = "1.4.0"
 userMessagingPlatform = "3.2.0"
 
 # AdMob mediation adapters
-admobAdapterIronSource   = "9.5.0.0"
-admobAdapterUnity        = "4.19.0.0"
-admobAdapterChartboost   = "9.13.0.0"
-admobAdapterLiftoff      = "7.7.7.0"
-admobAdapterMeta         = "6.22.0.0"
-admobAdapterMintegral    = "17.1.71.0"
+admobAdapterIronSource   = "9.6.0.1"
+admobAdapterUnity        = "4.20.1.0"
+admobAdapterChartboost   = "9.14.1.0"
+admobAdapterLiftoff      = "7.7.8.1"
+admobAdapterMeta         = "6.22.0.1"
+admobAdapterMintegral    = "17.1.81.1"
 
 # IronSource mediation
 mbridge_android_sdk = "17.1.51"
@@ -37,7 +37,7 @@ facebookAdapter = "5.2.0"
 # Unity Ads SDK — shared by both the AdMob Unity adapter (com.google.ads.mediation:unity)
 # and the LevelPlay Unity adapter. Keep aligned with the AdMob adapter's tested pairing:
 # adapter 4.19.0.0 is built & tested against Unity Ads SDK 4.19.0.
-unityAds = "4.19.0"
+unityAds = "4.20.1"
 unityadsAdapter = "5.6.0"
 
 # IS Chartboost
@@ -59,8 +59,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 
-# AdMob core
-play-services-ads          = { module = "com.google.android.gms:play-services-ads",          version.ref = "playServicesAds" }
+# AdMob core — GMA Next-Gen SDK
+ads-mobile-sdk             = { module = "com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk", version.ref = "adsMobileSdk" }
 user-messaging-platform    = { module = "com.google.android.ump:user-messaging-platform",    version.ref = "userMessagingPlatform" }
 
 # AdMob mediation adapters

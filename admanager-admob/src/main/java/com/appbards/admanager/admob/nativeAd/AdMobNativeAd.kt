@@ -10,19 +10,22 @@ import com.appbards.admanager.core.model.AdResult
 import com.appbards.admanager.core.model.ErrorCode
 import com.appbards.admanager.core.nativeAd.NativeAdViewBinder
 import com.appbards.admanager.core.provider.INativeAd
-import com.google.android.gms.ads.AdListener
-import com.google.android.gms.ads.AdLoader
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.nativead.MediaView
-import com.google.android.gms.ads.nativead.NativeAd
-import com.google.android.gms.ads.nativead.NativeAdOptions
-import com.google.android.gms.ads.nativead.NativeAdView
+import com.google.android.libraries.ads.mobile.sdk.common.AdChoicesPlacement
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.nativead.MediaView
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAd
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdLoader
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdLoaderCallback
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdRequest
+import com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 /*
-    // In the app — completely custom layout, no library dependency on the design
+    // In the app — completely custom layout, no library dependency on the design.
+    // The layout's root must be a
+    // com.google.android.libraries.ads.mobile.sdk.nativead.NativeAdView and its media
+    // slot a com.google.android.libraries.ads.mobile.sdk.nativead.MediaView.
     val adView = layoutInflater.inflate(R.layout.my_custom_native_ad, null) as NativeAdView
 
     nativeAd.show(
@@ -39,40 +42,54 @@ import kotlin.coroutines.resume
  */
 
 class AdMobNativeAd(
-    private val context: Context,
     private val adUnitId: String
 ) : INativeAd {
+
+    @Deprecated(
+        message = "The context parameter is unused since the GMA Next-Gen migration " +
+                "(NativeAdLoader.load() no longer takes a Context) and will be removed in 2.0.0.",
+        replaceWith = ReplaceWith(
+            "AdMobNativeAd(adUnitId)",
+            "com.appbards.admanager.admob.nativeAd.AdMobNativeAd"
+        ),
+        level = DeprecationLevel.WARNING
+    )
+    constructor(context: Context, adUnitId: String) : this(adUnitId)
 
     private var nativeAd: NativeAd? = null
 
 
     override suspend fun load(): AdResult = suspendCancellableCoroutine { continuation ->
-        val adLoader = AdLoader.Builder(context, adUnitId)
-            .forNativeAd { ad ->
-                nativeAd?.destroy()
-                nativeAd = ad
-            }
-            .withAdListener(object : AdListener() {
-                override fun onAdLoaded() {
-                    continuation.resume(AdResult.Success("Native ad loaded"))
-                }
-
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    nativeAd = null
-                    continuation.resume(
-                        AdResult.Failure(AdError(ErrorCode.NO_FILL, error.message, error))
-                    )
-                }
-            })
-            .withNativeAdOptions(
-                NativeAdOptions.Builder()
-                    .setAdChoicesPlacement(NativeAdOptions.ADCHOICES_TOP_RIGHT)
-                    .build()
-            )
+        // AdLoader is gone: the ad unit ID, requested native types and the options that
+        // used to live in NativeAdOptions are all declared on NativeAdRequest now.
+        val request = NativeAdRequest.Builder(adUnitId, listOf(NativeAd.NativeAdType.NATIVE))
+            .setAdChoicesPlacement(AdChoicesPlacement.TOP_RIGHT)
             .build()
 
-        // loadAd() must be used instead of loadAds() when mediation is enabled
-        adLoader.loadAd(AdRequest.Builder().build())
+        // NativeAdLoader is used statically, and loads a single ad per call — which is
+        // what mediation requires anyway.
+        NativeAdLoader.load(
+            request,
+            object : NativeAdLoaderCallback {
+                override fun onNativeAdLoaded(nativeAd: NativeAd) {
+                    this@AdMobNativeAd.nativeAd?.destroy()
+                    this@AdMobNativeAd.nativeAd = nativeAd
+                    if (continuation.isActive) {
+                        continuation.resume(AdResult.Success("Native ad loaded"))
+                    }
+                }
+
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    nativeAd?.destroy()
+                    nativeAd = null
+                    if (continuation.isActive) {
+                        continuation.resume(
+                            AdResult.Failure(AdError(ErrorCode.NO_FILL, adError.message, adError))
+                        )
+                    }
+                }
+            }
+        )
     }
 
     override fun isReady(): Boolean = nativeAd != null
@@ -150,21 +167,19 @@ class AdMobNativeAd(
         }
 
         // Media vs icon: in preferIcon mode the media view would be too big for
-        // the slot, so hide it and rely on the icon above. Otherwise register and
-        // populate the media view as usual.
+        // the slot, so hide it and rely on the icon above. Otherwise show it and let
+        // registerNativeAd() below populate it.
         val mediaView = binder.mediaView as? MediaView
         if (binder.preferIcon) {
             mediaView?.visibility = View.GONE
         } else {
-            mediaView?.let {
-                it.visibility = View.VISIBLE
-                adView.mediaView = it
-                ad.mediaContent?.let { content -> it.mediaContent = content }
-            }
+            mediaView?.visibility = View.VISIBLE
         }
 
-        // Register the NativeAd — wires up clicks, impressions and AdChoices overlay
-        adView.setNativeAd(ad)
+        // Register the NativeAd — wires up clicks, impressions, the media content and
+        // the AdChoices overlay. This replaces setNativeAd() plus the manual
+        // mediaView/mediaContent assignment; the media view is passed in here instead.
+        adView.registerNativeAd(ad, mediaView.takeUnless { binder.preferIcon })
 
         callback.onAdShown()
         callback.onNativeAdImpression()

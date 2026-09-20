@@ -2,15 +2,18 @@ package com.appbards.admanager.admob.appOpen
 
 import android.app.Activity
 import android.content.Context
+import com.appbards.admanager.admob.internal.onMainThread
 import com.appbards.admanager.core.callback.AppOpenAdCallback
 import com.appbards.admanager.core.model.AdError
 import com.appbards.admanager.core.model.AdResult
 import com.appbards.admanager.core.model.ErrorCode
 import com.appbards.admanager.core.provider.IAppOpenAd
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.appopen.AppOpenAd
+import com.google.android.libraries.ads.mobile.sdk.appopen.AppOpenAd
+import com.google.android.libraries.ads.mobile.sdk.appopen.AppOpenAdEventCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Date
 import kotlin.coroutines.resume
@@ -35,9 +38,19 @@ import kotlin.coroutines.resume
 
 
 class AdMobAppOpenAd(
-    private val context: Context,
     private val adUnitId: String
 ) : IAppOpenAd {
+
+    @Deprecated(
+        message = "The context parameter is unused since the GMA Next-Gen migration " +
+                "(AppOpenAd.load() no longer takes a Context) and will be removed in 2.0.0.",
+        replaceWith = ReplaceWith(
+            "AdMobAppOpenAd(adUnitId)",
+            "com.appbards.admanager.admob.appOpen.AdMobAppOpenAd"
+        ),
+        level = DeprecationLevel.WARNING
+    )
+    constructor(context: Context, adUnitId: String) : this(adUnitId)
 
     private var appOpenAd: AppOpenAd? = null
     private var isLoadingAd = false
@@ -60,24 +73,24 @@ class AdMobAppOpenAd(
 
         isLoadingAd = true
 
+        // The ad unit ID now lives on the request, and load() no longer takes a Context.
         AppOpenAd.load(
-            context,
-            adUnitId,
-            AdRequest.Builder().build(),
-            object : AppOpenAd.AppOpenAdLoadCallback() {
+            AdRequest.Builder(adUnitId).build(),
+            object : AdLoadCallback<AppOpenAd> {
                 override fun onAdLoaded(ad: AppOpenAd) {
+                    appOpenAd?.destroy()
                     appOpenAd = ad
                     isLoadingAd = false
                     loadTime = Date().time
                     continuation.resume(AdResult.Success("App open ad loaded"))
                 }
 
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    appOpenAd = null
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    discardAd()
                     isLoadingAd = false
                     continuation.resume(
                         AdResult.Failure(
-                            AdError(ErrorCode.NO_FILL, error.message, error)
+                            AdError(ErrorCode.NO_FILL, adError.message, adError)
                         )
                     )
                 }
@@ -99,35 +112,45 @@ class AdMobAppOpenAd(
 
         val ad = appOpenAd
         if (ad == null || isExpired()) {
-            appOpenAd = null
+            discardAd()
             callback.onAdFailedToShow(
                 AdError(ErrorCode.AD_NOT_READY, "App open ad not loaded or has expired")
             )
             return
         }
 
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+        // Next-Gen callbacks arrive on a background thread — everything that reaches
+        // app code has to be handed back to the main thread.
+        ad.adEventCallback = object : AppOpenAdEventCallback {
             override fun onAdShowedFullScreenContent() {
                 isShowingAd = true
-                callback.onAdShown()
+                onMainThread { callback.onAdShown() }
             }
 
-            override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+            override fun onAdFailedToShowFullScreenContent(
+                fullScreenContentError: FullScreenContentError
+            ) {
                 appOpenAd = null
                 isShowingAd = false
-                callback.onAdFailedToShow(
-                    AdError(ErrorCode.SHOW_FAILED, adError.message, adError)
-                )
+                onMainThread {
+                    callback.onAdFailedToShow(
+                        AdError(
+                            ErrorCode.SHOW_FAILED,
+                            fullScreenContentError.message,
+                            fullScreenContentError
+                        )
+                    )
+                }
             }
 
             override fun onAdDismissedFullScreenContent() {
                 appOpenAd = null  // consumed — must reload before next show
                 isShowingAd = false
-                callback.onAdClosed()
+                onMainThread { callback.onAdClosed() }
             }
 
             override fun onAdClicked() {
-                callback.onAdClicked()
+                onMainThread { callback.onAdClicked() }
             }
         }
 
@@ -138,9 +161,14 @@ class AdMobAppOpenAd(
     }
 
     override fun destroy() {
-        appOpenAd = null
+        discardAd()
         isShowingAd = false
         isLoadingAd = false
+    }
+
+    private fun discardAd() {
+        appOpenAd?.destroy()
+        appOpenAd = null
     }
 
     private fun isExpired(): Boolean {

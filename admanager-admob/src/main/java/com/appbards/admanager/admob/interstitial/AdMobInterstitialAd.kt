@@ -1,16 +1,18 @@
 package com.appbards.admanager.admob.interstitial
 
 import android.app.Activity
+import com.appbards.admanager.admob.internal.onMainThread
 import com.appbards.admanager.core.callback.InterstitialAdCallback
 import com.appbards.admanager.core.model.AdError
 import com.appbards.admanager.core.model.AdResult
 import com.appbards.admanager.core.model.ErrorCode
 import com.appbards.admanager.core.provider.IInterstitialAd
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.interstitial.InterstitialAd
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAd
+import com.google.android.libraries.ads.mobile.sdk.interstitial.InterstitialAdEventCallback
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -24,23 +26,23 @@ class AdMobInterstitialAd(
     private var interstitialAd: InterstitialAd? = null
 
     override suspend fun load(): AdResult = suspendCancellableCoroutine { continuation ->
-        val adRequest = AdRequest.Builder().build()
+        // The ad unit ID now lives on the request, and load() no longer takes a Context.
+        val adRequest = AdRequest.Builder(adUnitId).build()
 
         InterstitialAd.load(
-            activity,
-            adUnitId,
             adRequest,
-            object : InterstitialAdLoadCallback() {
+            object : AdLoadCallback<InterstitialAd> {
                 override fun onAdLoaded(ad: InterstitialAd) {
+                    interstitialAd?.destroy()
                     interstitialAd = ad
                     continuation.resume(AdResult.Success("Interstitial loaded"))
                 }
 
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    interstitialAd = null
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    discardAd()
                     continuation.resume(
                         AdResult.Failure(
-                            AdError(ErrorCode.NO_FILL, error.message, error)
+                            AdError(ErrorCode.NO_FILL, adError.message, adError)
                         )
                     )
                 }
@@ -62,31 +64,46 @@ class AdMobInterstitialAd(
             return
         }
 
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+        // Next-Gen callbacks arrive on a background thread — everything that reaches
+        // app code has to be handed back to the main thread.
+        ad.adEventCallback = object : InterstitialAdEventCallback {
             override fun onAdShowedFullScreenContent() {
                 interstitialAd = null  // consumed — core will trigger reload via autoPreload
-                callback.onAdShown()
+                onMainThread { callback.onAdShown() }
             }
 
-            override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+            override fun onAdFailedToShowFullScreenContent(
+                fullScreenContentError: FullScreenContentError
+            ) {
                 interstitialAd = null
-                callback.onAdFailedToShow(
-                    AdError(ErrorCode.SHOW_FAILED, adError.message, adError)
-                )
+                onMainThread {
+                    callback.onAdFailedToShow(
+                        AdError(
+                            ErrorCode.SHOW_FAILED,
+                            fullScreenContentError.message,
+                            fullScreenContentError
+                        )
+                    )
+                }
             }
 
             override fun onAdDismissedFullScreenContent() {
-                callback.onAdClosed()
+                onMainThread { callback.onAdClosed() }
             }
 
             override fun onAdClicked() {
-                callback.onAdClicked()
+                onMainThread { callback.onAdClicked() }
             }
         }
         ad.show(activity)
     }
 
     override fun destroy() {
+        discardAd()
+    }
+
+    private fun discardAd() {
+        interstitialAd?.destroy()
         interstitialAd = null
     }
 }

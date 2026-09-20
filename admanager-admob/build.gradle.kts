@@ -38,6 +38,12 @@ kotlin {
 
 configurations.all {
     exclude(group = "com.unity3d.ads-mediation", module = "adquality-sdk")
+
+    // The GMA Next-Gen SDK bundles its own copy of the legacy ad classes. Mediation
+    // adapters still declare play-services-ads(-lite) transitively, which would pull
+    // in duplicate symbols, so strip them everywhere.
+    exclude(group = "com.google.android.gms", module = "play-services-ads")
+    exclude(group = "com.google.android.gms", module = "play-services-ads-lite")
 }
 
 dependencies {
@@ -53,8 +59,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    // Google Mobile Ads SDK
-    implementation(libs.play.services.ads)
+    // Google Mobile Ads SDK (Next-Gen)
+    implementation(libs.ads.mobile.sdk)
 
     // UMP / GDPR consent SDK
     implementation(libs.user.messaging.platform)

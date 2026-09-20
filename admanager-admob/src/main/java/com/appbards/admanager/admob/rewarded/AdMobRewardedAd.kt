@@ -1,17 +1,21 @@
 package com.appbards.admanager.admob.rewarded
 
 import android.app.Activity
+import com.appbards.admanager.admob.internal.onMainThread
 import com.appbards.admanager.core.callback.RewardedAdCallback
 import com.appbards.admanager.core.model.AdError
 import com.appbards.admanager.core.model.AdResult
 import com.appbards.admanager.core.model.AdReward
 import com.appbards.admanager.core.model.ErrorCode
 import com.appbards.admanager.core.provider.IRewardedAd
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.FullScreenContentCallback
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.rewarded.RewardedAd
-import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdLoadCallback
+import com.google.android.libraries.ads.mobile.sdk.common.AdRequest
+import com.google.android.libraries.ads.mobile.sdk.common.FullScreenContentError
+import com.google.android.libraries.ads.mobile.sdk.common.LoadAdError
+import com.google.android.libraries.ads.mobile.sdk.rewarded.OnUserEarnedRewardListener
+import com.google.android.libraries.ads.mobile.sdk.rewarded.RewardItem
+import com.google.android.libraries.ads.mobile.sdk.rewarded.RewardedAd
+import com.google.android.libraries.ads.mobile.sdk.rewarded.RewardedAdEventCallback
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -25,23 +29,23 @@ class AdMobRewardedAd (
     private var rewardedAd: RewardedAd? = null
 
     override suspend fun load(): AdResult = suspendCancellableCoroutine { continuation ->
-        val adRequest = AdRequest.Builder().build()
+        // The ad unit ID now lives on the request, and load() no longer takes a Context.
+        val adRequest = AdRequest.Builder(adUnitId).build()
 
         RewardedAd.load(
-            activity,
-            adUnitId,
             adRequest,
-            object : RewardedAdLoadCallback() {
+            object : AdLoadCallback<RewardedAd> {
                 override fun onAdLoaded(ad: RewardedAd) {
+                    rewardedAd?.destroy()
                     rewardedAd = ad
                     continuation.resume(AdResult.Success("Rewarded ad loaded"))
                 }
 
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    rewardedAd = null
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    discardAd()
                     continuation.resume(
                         AdResult.Failure(
-                            AdError(ErrorCode.NO_FILL, error.message, error)
+                            AdError(ErrorCode.NO_FILL, adError.message, adError)
                         )
                     )
                 }
@@ -61,41 +65,60 @@ class AdMobRewardedAd (
             return
         }
 
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+        // Next-Gen callbacks arrive on a background thread — everything that reaches
+        // app code has to be handed back to the main thread.
+        ad.adEventCallback = object : RewardedAdEventCallback {
             override fun onAdShowedFullScreenContent() {
                 rewardedAd = null  // consumed — core will trigger reload via autoPreload
-                callback.onAdShown()
+                onMainThread { callback.onAdShown() }
             }
 
-            override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
+            override fun onAdFailedToShowFullScreenContent(
+                fullScreenContentError: FullScreenContentError
+            ) {
                 rewardedAd = null
-                callback.onAdFailedToShow(
-                    AdError(ErrorCode.SHOW_FAILED, adError.message, adError)
-                )
+                onMainThread {
+                    callback.onAdFailedToShow(
+                        AdError(
+                            ErrorCode.SHOW_FAILED,
+                            fullScreenContentError.message,
+                            fullScreenContentError
+                        )
+                    )
+                }
             }
 
             override fun onAdDismissedFullScreenContent() {
-                callback.onAdClosed()
+                onMainThread { callback.onAdClosed() }
             }
 
             override fun onAdClicked() {
-                callback.onAdClicked()
+                onMainThread { callback.onAdClicked() }
             }
         }
 
-        ad.show(activity) { rewardItem ->
-            // Called by AdMob when the user earns the reward.
-            // Note: this fires BEFORE onAdDismissedFullScreenContent.
-            callback.onUserRewarded(
-                AdReward(
-                    type = rewardItem.type,
-                    amount = rewardItem.amount
-                )
-            )
-        }
+        ad.show(activity, object : OnUserEarnedRewardListener {
+            override fun onUserEarnedReward(reward: RewardItem) {
+                // Called by AdMob when the user earns the reward.
+                // Note: this fires BEFORE onAdDismissedFullScreenContent.
+                onMainThread {
+                    callback.onUserRewarded(
+                        AdReward(
+                            type = reward.type,
+                            amount = reward.amount
+                        )
+                    )
+                }
+            }
+        })
     }
 
     override fun destroy() {
+        discardAd()
+    }
+
+    private fun discardAd() {
+        rewardedAd?.destroy()
         rewardedAd = null
     }
 }
